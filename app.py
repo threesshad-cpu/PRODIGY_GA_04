@@ -13,11 +13,10 @@ st.set_page_config(page_title="AI Facade Architect Pro", layout="wide")
 
 st.markdown("""
     <style>
-    /* Animated Aurora Flow Background */
     .stApp {
         background: linear-gradient(-45deg, #020617, #0f172a, #1e1b4b, #0f172a);
         background-size: 400% 400%;
-        animation: aurora_flow 12s ease infinite;
+        animation: aurora_flow 5s ease infinite;
         color: #f8fafc;
     }
 
