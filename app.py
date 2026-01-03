@@ -60,9 +60,9 @@ st.sidebar.info("Select a sample to test the AI architecture instantly.")
 # Define sample mapping (Ensure these files exist in a 'samples/' folder)
 samples = {
     "None": None,
-    "Sample 1: Classic Building": "C:\\p4-\\samples\\1.jpg",
-    "Sample 2: Modern Complex": "C:\\p4-\\samples\\2.jpg",
-    "Sample 3: Balcony Detail": "C:\\p4-\\samples\\3.jpg"
+    "Sample 1: Classic Building": "samples/1.jpg",
+    "Sample 2: Modern Complex": "samples/2.jpg",
+    "Sample 3: Balcony Detail": "samples/3.jpg"
 }
 selected_sample = st.sidebar.selectbox("Choose a Sample Map:", list(samples.keys()))
 
