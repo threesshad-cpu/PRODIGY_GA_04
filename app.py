@@ -5,11 +5,11 @@ import numpy as np
 import io
 from PIL import Image, ImageEnhance
 
-# Suppress technical logs for a clean terminal
+# Suppress technical logs
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-# --- 1. Compact Layout & Moving Aurora CSS ---
-st.set_page_config(page_title="AI Facade Architect Pro", layout="wide")
+# --- 1. Compact Aurora UI Styling ---
+st.set_page_config(page_title="🏢AI Facade Architect Pro", layout="wide")
 
 st.markdown("""
     <style>
@@ -17,110 +17,92 @@ st.markdown("""
         background: linear-gradient(-45deg, #020617, #0f172a, #1e1b4b, #0f172a);
         background-size: 400% 400%;
         animation: aurora_flow 5s ease infinite;
-        color: #f8fafc;
     }
-
     @keyframes aurora_flow {
         0% { background-position: 0% 50%; }
         50% { background-position: 100% 50%; }
         100% { background-position: 0% 50%; }
     }
-    /* Compact Typography */
-    .elite-header {
-        text-align: center;
-        color: #f1f5f9;
-        font-family: 'Inter', sans-serif;
-        font-weight: 800;
-        font-size: 2rem !important;
-        margin: 0;
-        padding: 0;
-    }
-
-    /* Fixed Image Size Constraints */
-    [data-testid="stImage"] img {
+    .stImage > img {
         max-width: 320px !important;
         max-height: 320px !important;
         border-radius: 8px;
-        object-fit: contain;
-    }
-
-    /* Action Button Styling */
-    .stButton>button {
-        background: linear-gradient(90deg, #6366f1, #a855f7) !important;
-        border: none !important;
-        color: white !important;
-        border-radius: 6px !important;
-        font-weight: bold !important;
-        margin-top: 10px;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. Predict & Load Logic ---
+# --- 2. Model Logic ---
 @st.cache_resource
 def load_cmp_model():
     model_path = 'gen.h5'
-    if not os.path.exists(model_path):
-        return None
-    try:
-        # safe_mode=False avoids 'quantization_mode' attribute errors in Keras 3.0
+    if os.path.exists(model_path):
         return tf.keras.models.load_model(model_path, compile=False, safe_mode=False)
-    except:
-        return None
+    return None
 
-def process_img(image):
-    # Standard Pix2Pix scaling to 256x256
-    image = image.resize((256, 256))
-    img_array = (np.array(image).astype(np.float32) / 127.5) - 1
-    return np.expand_dims(img_array, axis=0)
+def predict_facade(image, model):
+    # Preprocess
+    img_res = image.resize((256, 256))
+    img_arr = (np.array(img_res).astype(np.float32) / 127.5) - 1
+    input_tensor = np.expand_dims(img_arr, axis=0)
+    
+    # Predict
+    pred = model.predict(input_tensor, verbose=0)
+    
+    # Post-process
+    out = (pred[0] + 1) * 127.5
+    res_img = Image.fromarray(out.astype(np.uint8))
+    return ImageEnhance.Sharpness(res_img).enhance(1.6)
 
-def enhance_result(prediction):
-    # Denormalize back to [0, 255]
-    out = (prediction[0] + 1) * 127.5
-    img = Image.fromarray(out.astype(np.uint8))
-    # Production sharpening boost
-    return ImageEnhance.Sharpness(img).enhance(1.6)
+# --- 3. Sidebar: Sample Management ---
+st.sidebar.header("🎨 Sample Inputs")
+st.sidebar.info("Select a sample to test the AI architecture instantly.")
 
-# --- 3. Main Application ---
-st.markdown('<div class="elite-header">AI FACADE ARCHITECT</div>', unsafe_allow_html=True)
-st.markdown("<p style='text-align:center; color:#94a3b8; font-size: 0.85rem; margin-bottom: 15px;'>Task-04: Neural Image-to-Image Synthesis</p>", unsafe_allow_html=True)
+# Define sample mapping (Ensure these files exist in a 'samples/' folder)
+samples = {
+    "None": None,
+    "Sample 1: Classic Building": "C:\\p4-\\samples\\1.jpg",
+    "Sample 2: Modern Complex": "C:\\p4-\\samples\\2.jpg",
+    "Sample 3: Balcony Detail": "C:\\p4-\\samples\\3.jpg"
+}
+selected_sample = st.sidebar.selectbox("Choose a Sample Map:", list(samples.keys()))
 
-# Centered Uploader
-_, upload_col, _ = st.columns([1, 2, 1])
-with upload_col:
-    file = st.file_uploader("Upload Architectural Map", type=["jpg", "png", "jpeg"], label_visibility="collapsed")
+# --- 4. Main App Logic ---
+st.markdown("<h1 style='text-align:center; color:white;'>🏢AI FACADE ARCHITECT</h1>", unsafe_allow_html=True)
 
+file = st.file_uploader("Upload Map", type=["jpg", "png", "jpeg"], label_visibility="collapsed")
+
+# Logic to determine which image to use
+input_img = None
 if file:
     input_img = Image.open(file).convert('RGB')
-    
-    # Using 4 columns [1, 2, 2, 1] creates a compact, centered display
+elif selected_sample != "None":
+    sample_path = samples[selected_sample]
+    if os.path.exists(sample_path):
+        input_img = Image.open(sample_path).convert('RGB')
+    else:
+        st.sidebar.error(f"Sample file {sample_path} not found.")
+
+if input_img:
     _, col1, col2, _ = st.columns([0.8, 2, 2, 0.8])
     
     with col1:
         st.markdown('<div class="glass-card">', unsafe_allow_html=True)
         st.write("**Source Labels**")
-        # width='stretch' replaces use_container_width=True for 2026 API
-        st.image(input_img, width='stretch') 
+        st.image(input_img, width='stretch')
         st.markdown('</div>', unsafe_allow_html=True)
-        
         execute = st.button("🚀 EXECUTE")
 
     with col2:
         st.markdown('<div class="glass-card">', unsafe_allow_html=True)
         st.write("**Neural Output**")
-        
         if execute:
             with st.spinner("Synthesizing..."):
                 model = load_cmp_model()
                 if model:
-                    pred = model.predict(process_img(input_img), verbose=0)
-                    result = enhance_result(pred)
+                    result = predict_facade(input_img, model)
                     st.image(result, width='stretch')
-                    
-                    # Minimal Export
-                    buf = io.BytesIO()
-                    result.save(buf, format="PNG")
-                    st.download_button("📥 SAVE", buf.getvalue(), "render.png")
+                else:
+                    st.error("Model file missing.")
         else:
             st.info("Ready for synthesis")
         st.markdown('</div>', unsafe_allow_html=True)
